@@ -1,70 +1,68 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <title>Robot Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <title>Robot</title>
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background-color: #222;
-    }
-    canvas {
-      display: block;
-    }
+    body { margin:0; width:100vw; height:100vh; overflow:hidden; background:#111; }
   </style>
 </head>
 <body>
   <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.module.js';
-    import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.150.1/examples/jsm/loaders/GLTFLoader.js';
+    import * as THREE from 'https://cdn.skypack.dev/three@0.160.0';
+    import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+    import { OrbitControls } from 'https://cdn.skypack.dev/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
-    // Sahne oluştur
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x222222);
+    scene.background = new THREE.Color(0x111111);
 
-    // Kamera ayarları
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 1, 5);
+    const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 1000);
+    camera.position.set(0, 1, 2);
 
-    // Renderer ayarları
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    const renderer = new THREE.WebGLRenderer({ antialias:true });
+    renderer.setSize(innerWidth, innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // Işık ekle
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-    scene.add(ambientLight);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.5));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(2, 2, 2);
+    scene.add(dirLight);
 
-    // GLTF model yükleyici
     const loader = new GLTFLoader();
-    loader.load('robot.glb',
-      (gltf) => {
-        const robot = gltf.scene;
-        robot.position.set(0, 0, 0);
-        scene.add(robot);
+    loader.load(
+      'robot.glb',                       // <-- kökte olmalı
+      gltf => {
+        scene.add(gltf.scene);
+        // Boyut kontrolü
+        const box = new THREE.Box3().setFromObject(gltf.scene);
+        const center = box.getCenter(new THREE.Vector3());
+        const size   = box.getSize(new THREE.Vector3());
+        console.log('Boyut:', size, 'Merkez:', center);
+
+        // Sahneyi ortala & kamerayı uzaklaştır
+        gltf.scene.position.sub(center);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        camera.position.z = maxDim * 2;
       },
-      undefined,
-      (error) => {
-        console.error('Model yüklenemedi:', error);
-        alert('Model yüklenemedi: ' + error.message);
-      }
+      xhr => console.log('% yüklendi:', (xhr.loaded/xhr.total*100).toFixed(0)),
+      err => console.error('Yükleme hatası:', err)
     );
 
-    // Pencere boyutu değiştiğinde sahneyi güncelle
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
 
-    // Animasyon döngüsü
     function animate() {
       requestAnimationFrame(animate);
+      controls.update();
       renderer.render(scene, camera);
     }
     animate();
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth/innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
   </script>
 </body>
 </html>
